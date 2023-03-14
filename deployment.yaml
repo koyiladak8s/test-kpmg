@@ -1,0 +1,130 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    labels:
+        app: mediawiki
+    name: mediawiki
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: mediawiki
+    template:
+        metadata:
+            labels:
+                app: mediawiki
+        spec:
+            containers:
+                - image:  mediawiki:1.39
+                    imagePullPolicy: Always
+                    name: mediawiki
+                    ports:
+                    - containerPort: 8080
+                    command: ["/bin/bash", "-c"]
+                    args: ["php-fpm7.2 -D && /usr/sbin/apache2ctl -D FOREGROUND"]
+                    volumeMounts:
+                      - mountPath: /mnt/mediawiki-test.csv
+                        name: mediawiki-pv
+                    volumes:
+                      - name: mediawiki-pv
+                        persistentVolumeClaim:
+                          claimName: mediawiki-pvc
+                      - name: mediawiki-test-csv
+                        configMap:
+                          name: mediawiki-configmap
+                    resources:
+                      requests:
+                        cpu: 400m
+                        memory: 400Mi
+                      limits:
+                        cpu: 600m
+                        memory: 600Mi
+                
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    labels:
+        app: poda
+    name: poda
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: poda
+        metadata:
+            labels:
+                app: poda
+        spec:
+            containers:
+                - image:  poda:image
+                  imagePullPolicy: Always
+                  name: poda
+                  ports:
+                      - containerPort: 9090
+                  resources:
+                    requests:
+                      cpu: 400m
+                      memory: 400Mi
+                    limits:
+                      cpu: 600m
+                      memory: 600Mi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    labels:
+        app: podb
+    name: podb
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: podb
+        metadata:
+            labels:
+                app: podb
+        spec:
+            containers:
+                - image:  podb:image
+                  imagePullPolicy: Always
+                  name: podb
+                  env:
+                  - name: username_env
+                    valueFrom:
+                      configMapKeyRef:
+                        name: callenge03-configmap
+                        key: username
+                  - name: hostname_env
+                    valueFrom:
+                      configMapKeyRef:
+                        name: callenge03-configmap
+                        key: hostname
+                  - name: url_env
+                    valueFrom:
+                      configMapKeyRef:
+                        name: callenge03-configmap
+                        key: url
+                  ports:
+                      - containerPort: 9090
+                  resources:
+                    requests:
+                      cpu: 200m
+                      memory: 200Mi
+                    limits:
+                      cpu: 400m
+                      memory: 400Mi
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: callenge03-configmap
+data: 
+  username: value1
+  hostname: value2
+  url: value3
+---
+
